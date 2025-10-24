@@ -75,27 +75,27 @@ TIME_SERIES_MAPPING = {
     'ASGN': {
         'suffix': 'ASGN.ITBI.M',
         'description': 'amounts: assigned',
-        'source_column': 'assigned'
+        'source_column': 'assegnato'
     },
     'MAX': {
         'suffix': 'MAX.ITBI.M',
         'description': 'amounts: maximum offered',
-        'source_column': 'max_offered'
+        'source_column': 'massimo offerto'
     },
     'MIN': {
         'suffix': 'MIN.ITBI.M',
         'description': 'amounts: minimum offered',
-        'source_column': 'min_offered'
+        'source_column': 'minimo offerto'
     },
     'OFR': {
         'suffix': 'OFR.ITBI.M',
         'description': 'amounts: offered',
-        'source_column': 'offered'
+        'source_column': 'offerto'
     },
     'REQ': {
         'suffix': 'REQ.ITBI.M',
         'description': 'amounts: required',
-        'source_column': 'required'
+        'source_column': 'richiesto'
     }
 }
 
@@ -167,5 +167,6 @@ PAGE_LOAD_DELAY = 3
 # =============================================================================
 
 OUTPUT_DIR = './output'
-DATA_FILE_PATTERN = '{isin}_DATA_{timestamp}.xls'
-META_FILE_PATTERN = '{isin}_META_{timestamp}.xls'
+# Changed from .xls to .xlsx to avoid engine issues
+DATA_FILE_PATTERN = '{isin}_DATA_{timestamp}.xlsx'
+META_FILE_PATTERN = '{isin}_META_{timestamp}.xlsx'
