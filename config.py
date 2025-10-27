@@ -1,6 +1,9 @@
 # config.py
 # ITBI (Italian Treasury Bond Index) Data Collection Configuration
 
+import os
+from datetime import datetime
+
 # =============================================================================
 # DATA SOURCE CONFIGURATION
 # =============================================================================
@@ -9,6 +12,16 @@ BASE_URL = 'https://www.bancaditalia.it/compiti/operazioni-mef/risultati-aste/in
 PROVIDER_NAME = 'Banca d\'Italia'
 DATASET_NAME = 'ITBI'
 COUNTRY = 'ITA'
+
+# =============================================================================
+# TIMESTAMPED FOLDERS CONFIGURATION
+# =============================================================================
+
+# Generate timestamp for this run (format: YYYYMMDD_HHMMSS)
+RUN_TIMESTAMP = datetime.now().strftime('%Y%m%d_%H%M%S')
+
+# Use timestamped folders to avoid conflicts between runs
+USE_TIMESTAMPED_FOLDERS = True
 
 # =============================================================================
 # PROCESSING CONFIGURATION
@@ -21,7 +34,7 @@ COUNTRY = 'ITA'
 TARGET_MONTH = None  # Options: None (auto), (2025, 10), 'all'
 
 # When set to True, process all months from January to the most recent month
-PROCESS_ALL_MONTHS = True  # Set to True to process entire year
+PROCESS_ALL_MONTHS = False  # Set to True to process entire year
 
 # =============================================================================
 # WEB SCRAPING SELECTORS
@@ -86,48 +99,48 @@ SOURCE_COLUMNS_EN = {
 # For each ISIN, we create 5 time series
 TIME_SERIES_MAPPING = {
     'ASGN': {
-        'suffix': 'ASGN.ITBI.M',
-        'description': 'amounts: assigned',
+        'suffix': 'ASGN.ITBI.D',
+        'description': 'amounts:assigned',
         'source_column': 'assegnato'
     },
     'MAX': {
-        'suffix': 'MAX.ITBI.M',
-        'description': 'amounts: maximum offered',
+        'suffix': 'MAX.ITBI.D',
+        'description': 'amounts:maximum offered',
         'source_column': 'massimo offerto'
     },
     'MIN': {
-        'suffix': 'MIN.ITBI.M',
-        'description': 'amounts: minimum offered',
+        'suffix': 'MIN.ITBI.D',
+        'description': 'amounts:minimum offered',
         'source_column': 'minimo offerto'
     },
     'OFR': {
-        'suffix': 'OFR.ITBI.M',
-        'description': 'amounts: offered',
+        'suffix': 'OFR.ITBI.D',
+        'description': 'amounts:offered',
         'source_column': 'offerto'
     },
     'REQ': {
-        'suffix': 'REQ.ITBI.M',
-        'description': 'amounts: required',
+        'suffix': 'REQ.ITBI.D',
+        'description': 'amounts:required',
         'source_column': 'richiesto'
     }
 }
 
-# Order for columns in output files
-TIME_SERIES_ORDER = ['ASGN', 'MAX', 'MIN', 'OFR', 'REQ']
+# Order for columns in output files (CORRECTED: OFR, MIN, MAX, REQ, ASGN)
+TIME_SERIES_ORDER = ['OFR', 'MIN', 'MAX', 'REQ', 'ASGN']
 
 # =============================================================================
 # METADATA STANDARD FIELDS
 # =============================================================================
 
 METADATA_DEFAULTS = {
-    'FREQUENCY': 'M',  # Monthly (changed from D)
+    'FREQUENCY': 'D',  # Daily
     'MULTIPLIER': 6.0,
     'AGGREGATION_TYPE': 'END_OF_PERIOD',
     'UNIT_TYPE': 'LEVEL',
     'DATA_TYPE': 'CURRENCY',
     'DATA_UNIT': 'EUR',
     'SEASONALLY_ADJUSTED': 'NSA',
-    'ANNUALIZED': '',
+    'ANNUALIZED': False,
     'PROVIDER_MEASURE_URL': BASE_URL,
     'PROVIDER': 'AfricaAI',
     'SOURCE': 'BdIt',
@@ -136,7 +149,7 @@ METADATA_DEFAULTS = {
     'DATASET': DATASET_NAME
 }
 
-# Metadata file columns
+# Metadata file columns (removed NEXT_RELEASE_DATE and LAST_RELEASE_DATE)
 METADATA_COLUMNS = [
     'CODE',
     'DESCRIPTION',
@@ -153,9 +166,7 @@ METADATA_COLUMNS = [
     'SOURCE',
     'SOURCE_DESCRIPTION',
     'COUNTRY',
-    'DATASET',
-    'NEXT_RELEASE_DATE',
-    'LAST_RELEASE_DATE'
+    'DATASET'
 ]
 
 # =============================================================================
@@ -179,7 +190,20 @@ PAGE_LOAD_DELAY = 3
 # OUTPUT CONFIGURATION
 # =============================================================================
 
-OUTPUT_DIR = './output'
+# Base directories
+BASE_DOWNLOAD_DIR = './downloads'
+BASE_EXTRACTED_DIR = './extracted'
+BASE_OUTPUT_DIR = './output'
+
+# Apply timestamping if enabled
+if USE_TIMESTAMPED_FOLDERS:
+    DOWNLOAD_DIR = os.path.join(BASE_DOWNLOAD_DIR, RUN_TIMESTAMP)
+    EXTRACTED_DIR = os.path.join(BASE_EXTRACTED_DIR, RUN_TIMESTAMP)
+    OUTPUT_DIR = os.path.join(BASE_OUTPUT_DIR, RUN_TIMESTAMP)
+else:
+    DOWNLOAD_DIR = BASE_DOWNLOAD_DIR
+    EXTRACTED_DIR = BASE_EXTRACTED_DIR
+    OUTPUT_DIR = BASE_OUTPUT_DIR
 
 # File naming patterns (ITBI_ISIN_TYPE_YYYYMMDD.xls)
 DATA_FILE_PATTERN = 'ITBI_{isin}_DATA_{timestamp}.xls'

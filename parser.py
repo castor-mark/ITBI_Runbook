@@ -248,12 +248,18 @@ def create_time_series_data(isin_data, description):
     #  'rendimento aggiudicazione (altri titoli)', 'numero  operatori partecipanti']
     
     # Create a mapping from our expected column names to the actual column indices
+    # CORRECT mapping verified from source XLS data:
+    # Col 9 (Unnamed: 9) = offerto (offered)
+    # Col 10 (Unnamed: 10) = minimo offerto (minimum offered)
+    # Col 11 (importi mln euro) = assegnato (assigned)
+    # Col 12 (Unnamed: 12) = richiesto (required)
+    # Col 13 (Unnamed: 13) = massimo offerto (maximum offered)
     column_mapping = {
-        'offerto': 9,      # 'Unnamed: 9'
-        'minimo offerto': 10,  # 'Unnamed: 10'
-        'massimo offerto': 12,  # 'Unnamed: 12'
-        'richiesto': 13,    # 'Unnamed: 13'
-        'assegnato': 11     # 'Unnamed: 11' (between importi and Unnamed: 12)
+        'offerto': 9,           # 'Unnamed: 9' - offered
+        'minimo offerto': 10,   # 'Unnamed: 10' - minimum offered
+        'assegnato': 11,        # 'importi (mln euro)' - assigned
+        'richiesto': 12,        # 'Unnamed: 12' - required
+        'massimo offerto': 13   # 'Unnamed: 13' - maximum offered
     }
     
     # Create data for each time series type
@@ -298,42 +304,29 @@ def create_time_series_data(isin_data, description):
 def create_metadata_rows(isin, description, current_month):
     """Create metadata rows for all 5 time series of an ISIN"""
     metadata_rows = []
-    
-    # Create release dates
-    current_date = datetime.now()
-    next_month = current_date.replace(day=1)
-    if next_month.month == 12:
-        next_month = next_month.replace(year=next_month.year + 1, month=1)
-    else:
-        next_month = next_month.replace(month=next_month.month + 1)
-    
-    next_release_date = next_month.strftime(DATETIME_FORMAT_META)
-    last_release_date = current_date.strftime(DATETIME_FORMAT_META)
-    
+
     # Create a row for each time series type
     for ts_type in TIME_SERIES_ORDER:
         mapping = TIME_SERIES_MAPPING[ts_type]
-        
+
         # Create the code
         code = f"{isin}.{mapping['suffix']}"
-        
-        # Create the description
-        desc = f"ISIN: {isin}; {description}: {mapping['description']}"
-        
+
+        # Create the description (no spaces after colons/semicolons)
+        desc = f"ISIN:{isin};{description}:{mapping['description']}"
+
         # Create metadata row
         metadata_row = METADATA_DEFAULTS.copy()
         metadata_row['CODE'] = code
         metadata_row['DESCRIPTION'] = desc
-        metadata_row['NEXT_RELEASE_DATE'] = next_release_date
-        metadata_row['LAST_RELEASE_DATE'] = last_release_date
-        
+
         # Ensure all required columns are present
         for col in METADATA_COLUMNS:
             if col not in metadata_row:
                 metadata_row[col] = ""
-        
+
         metadata_rows.append(metadata_row)
-    
+
     return metadata_rows
 
 

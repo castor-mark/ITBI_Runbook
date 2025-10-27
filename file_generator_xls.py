@@ -88,8 +88,14 @@ def create_meta_file_xls(isin, metadata_rows, current_month):
     for row_idx, metadata in enumerate(metadata_rows, start=1):
         for col_idx, col_name in enumerate(METADATA_COLUMNS):
             value = metadata.get(col_name, '')
-            # Convert to string to ensure compatibility
-            ws.write(row_idx, col_idx, str(value) if value else '')
+            # Handle boolean values specially (keep as boolean, not string)
+            if isinstance(value, bool):
+                ws.write(row_idx, col_idx, value)
+            # Convert other values to string for compatibility
+            elif value or value == 0:
+                ws.write(row_idx, col_idx, str(value))
+            else:
+                ws.write(row_idx, col_idx, '')
 
     # Generate filename with proper format
     timestamp = get_timestamp_from_month(current_month)

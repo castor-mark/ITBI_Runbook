@@ -1,1 +1,55 @@
-/output
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Data directories (timestamped folders)
+downloads/*/
+extracted/*/
+output/*/
+
+# Keep directory structure but ignore contents
+downloads/*
+!downloads/.gitkeep
+extracted/*
+!extracted/.gitkeep
+output/*
+!output/.gitkeep
+
+# Downloaded files
+*.zip
+*.xls
+*.xlsx
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Chrome driver
+chromedriver*
+.wdm/
+
+# Temporary files
+*.tmp
+*.temp
