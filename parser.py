@@ -12,7 +12,8 @@ import re
 from config import (
     SOURCE_COLUMNS_IT, SOURCE_COLUMNS_EN, TIME_SERIES_MAPPING,
     TIME_SERIES_ORDER, DATE_FORMAT_INPUT, DATE_FORMAT_OUTPUT,
-    METADATA_DEFAULTS, METADATA_COLUMNS, DATETIME_FORMAT_META
+    METADATA_DEFAULTS, METADATA_COLUMNS, DATETIME_FORMAT_META,
+    TARGET_MONTH, PROCESS_ALL_MONTHS
 )
 
 
@@ -94,8 +95,19 @@ def convert_date_format(date_series):
     return date_series.dt.strftime(DATE_FORMAT_OUTPUT)
 
 
-def get_current_month_data(df):
-    """Extract data for the most recent month in the dataset"""
+def get_month_data(df, target_month=None, process_all=False):
+    """
+    Extract data for specified month(s)
+
+    Args:
+        df: DataFrame with auction data
+        target_month: Tuple of (year, month) or None for most recent
+        process_all: If True, return data grouped by all months
+
+    Returns:
+        If process_all=True: dict of {month_str: month_data}
+        If process_all=False: (month_data, month_str)
+    """
     # Check if 'data asta' column exists, if not, try to find it
     if 'data asta' not in df.columns:
         # Try to find the date column by looking for common patterns
@@ -105,46 +117,78 @@ def get_current_month_data(df):
                 date_col = col
                 log_debug(f"Found date column: {date_col}")
                 break
-        
+
         # If still not found, try to use the first column (index 0) which should be date
         if date_col is None and len(df.columns) > 0:
             date_col = df.columns[0]
             log_debug(f"Using first column as date: {date_col}")
-        
+
         if date_col is None:
             log_debug("Could not find date column in the Excel file", "ERROR")
-            return df.copy(), ""  # Return original df if date column not found
-        
+            if process_all:
+                return {}
+            return df.copy(), ""
+
         # Rename the column to 'data asta' for consistency
         df = df.rename(columns={date_col: 'data asta'})
-    
+
     # Debug: Show some sample values from the date column
     log_debug(f"Sample date values: {df['data asta'].head(10).tolist()}")
-    
+
     # Convert date column to datetime if it's not already
     if not pd.api.types.is_datetime64_any_dtype(df['data asta']):
         df['data asta'] = pd.to_datetime(df['data asta'], dayfirst=True, errors='coerce')
-    
+
     # Remove rows with invalid dates
     valid_date_mask = df['data asta'].notna()
     df = df[valid_date_mask].copy()
     log_debug(f"Rows with valid dates: {len(df)}")
-    
+
     if len(df) == 0:
         log_debug("No valid dates found", "ERROR")
+        if process_all:
+            return {}
         return df.copy(), ""
-    
+
     # Add month column for filtering
     df['month'] = df['data asta'].dt.to_period('M')
-    
-    # Get the most recent month
+
+    # Process all months
+    if process_all:
+        log_debug("Processing ALL months in the dataset")
+        all_months = sorted(df['month'].unique())
+        log_debug(f"Found {len(all_months)} months: {[str(m) for m in all_months]}")
+
+        result = {}
+        for month in all_months:
+            month_data = df[df['month'] == month].copy()
+            month_str = str(month)
+            result[month_str] = month_data
+            log_debug(f"  {month_str}: {len(month_data)} rows")
+
+        return result
+
+    # Process specific month
+    if target_month:
+        year, month = target_month
+        target_period = pd.Period(f"{year}-{month:02d}", freq='M')
+        log_debug(f"Processing SPECIFIC month: {target_period}")
+
+        if target_period in df['month'].values:
+            month_data = df[df['month'] == target_period].copy()
+            log_debug(f"Rows for {target_period}: {len(month_data)}")
+            return month_data, str(target_period)
+        else:
+            log_debug(f"No data found for {target_period}", "WARNING")
+            return df.iloc[:0].copy(), str(target_period)
+
+    # Default: get most recent month
     current_month = df['month'].max()
-    log_debug(f"Current month (most recent): {current_month}")
-    
-    # Filter data for current month
+    log_debug(f"Processing MOST RECENT month: {current_month}")
+
     current_month_data = df[df['month'] == current_month].copy()
     log_debug(f"Rows for current month: {len(current_month_data)}")
-    
+
     return current_month_data, str(current_month)
 
 
@@ -297,87 +341,148 @@ def create_metadata_rows(isin, description, current_month):
 # MAIN PARSER FUNCTION
 # =============================================================================
 
-def parse_auction_data(xls_file_path):
+def parse_auction_data(xls_file_path, target_month=None, process_all=False):
     """
     Parse the auction data XLS file and extract data for processing
-    
+
     Args:
         xls_file_path (str): Path to the XLS file
-        
+        target_month (tuple): Optional (year, month) tuple for specific month
+        process_all (bool): If True, process all months in the file
+
     Returns:
-        dict: Dictionary containing parsed data for each ISIN
+        dict: Dictionary containing parsed data for each ISIN (optionally grouped by month)
     """
     log_debug("\n" + "="*80)
     log_debug("STARTING AUCTION DATA PARSING")
     log_debug("="*80 + "\n")
-    
+
     try:
         # Read the XLS file with proper header row (row 2, index 1)
         log_debug(f"Reading XLS file: {xls_file_path}")
         df = pd.read_excel(xls_file_path, header=1)
         log_debug(f"Original rows: {len(df)}")
         log_debug(f"Columns: {list(df.columns)}")
-        
+
         # Skip the first 3 rows (header information)
         df = df.iloc[3:].reset_index(drop=True)
         log_debug(f"Rows after skipping header: {len(df)}")
-        
+
         # Remove completely empty rows
         df = df.dropna(how='all')
         log_debug(f"Rows after removing empty rows: {len(df)}")
-        
+
         # Clean the ISIN column
         df_clean = clean_isin_column(df)
         log_debug(f"Valid ISIN rows: {len(df_clean)}")
-        
+
         if len(df_clean) == 0:
             log_debug("No valid ISIN rows found", "ERROR")
             return None
-        
-        # Get data for the current month
-        current_month_data, current_month_str = get_current_month_data(df_clean)
-        
-        if len(current_month_data) == 0:
-            log_debug("No data for current month found", "ERROR")
-            return None
-        
-        # Get unique ISINs
-        unique_isins = get_unique_isins(current_month_data)
-        
-        if len(unique_isins) == 0:
-            log_debug("No unique ISINs found", "ERROR")
-            return None
-        
-        # Prepare data for each ISIN
-        parsed_data = {}
-        
-        for isin in unique_isins:
-            log_debug(f"\nProcessing ISIN: {isin}")
-            
-            # Prepare data for this ISIN
-            isin_data, description = prepare_isin_data(current_month_data, isin)
-            
-            # Create time series data
-            time_series = create_time_series_data(isin_data, description)
-            
-            # Create metadata rows
-            metadata_rows = create_metadata_rows(isin, description, current_month_str)
-            
-            # Store in result dictionary
-            parsed_data[isin] = {
-                'description': description,
-                'time_series': time_series,
-                'metadata': metadata_rows,
-                'current_month': current_month_str
-            }
-        
-        log_debug("\n" + "="*80)
-        log_debug("PARSING COMPLETE")
-        log_debug("="*80)
-        log_debug(f"Processed {len(parsed_data)} unique ISINs")
-        
-        return parsed_data
-        
+
+        # Get data for specified month(s)
+        month_data_result = get_month_data(df_clean, target_month, process_all)
+
+        if process_all:
+            # Processing all months - month_data_result is a dict
+            if not month_data_result:
+                log_debug("No month data found", "ERROR")
+                return None
+
+            # Process each month separately
+            all_parsed_data = {}
+
+            for month_str, month_df in month_data_result.items():
+                log_debug(f"\n" + "-"*80)
+                log_debug(f"PROCESSING MONTH: {month_str}")
+                log_debug("-"*80)
+
+                # Get unique ISINs for this month
+                unique_isins = get_unique_isins(month_df)
+
+                if len(unique_isins) == 0:
+                    log_debug(f"No unique ISINs found for {month_str}", "WARNING")
+                    continue
+
+                log_debug(f"Found {len(unique_isins)} unique ISINs for {month_str}")
+
+                # Process each ISIN
+                for isin in unique_isins:
+                    # Create unique key: ISIN_MONTH
+                    data_key = f"{isin}_{month_str}"
+
+                    log_debug(f"  Processing ISIN: {isin}")
+
+                    # Prepare data for this ISIN
+                    isin_data, description = prepare_isin_data(month_df, isin)
+
+                    # Create time series data
+                    time_series = create_time_series_data(isin_data, description)
+
+                    # Create metadata rows
+                    metadata_rows = create_metadata_rows(isin, description, month_str)
+
+                    # Store in result dictionary with unique key
+                    all_parsed_data[data_key] = {
+                        'isin': isin,
+                        'description': description,
+                        'time_series': time_series,
+                        'metadata': metadata_rows,
+                        'current_month': month_str
+                    }
+
+            log_debug("\n" + "="*80)
+            log_debug("PARSING COMPLETE (ALL MONTHS)")
+            log_debug("="*80)
+            log_debug(f"Processed {len(all_parsed_data)} ISIN-month combinations")
+
+            return all_parsed_data
+
+        else:
+            # Processing single month - month_data_result is a tuple
+            current_month_data, current_month_str = month_data_result
+
+            if len(current_month_data) == 0:
+                log_debug("No data for specified month found", "ERROR")
+                return None
+
+            # Get unique ISINs
+            unique_isins = get_unique_isins(current_month_data)
+
+            if len(unique_isins) == 0:
+                log_debug("No unique ISINs found", "ERROR")
+                return None
+
+            # Prepare data for each ISIN
+            parsed_data = {}
+
+            for isin in unique_isins:
+                log_debug(f"\nProcessing ISIN: {isin}")
+
+                # Prepare data for this ISIN
+                isin_data, description = prepare_isin_data(current_month_data, isin)
+
+                # Create time series data
+                time_series = create_time_series_data(isin_data, description)
+
+                # Create metadata rows
+                metadata_rows = create_metadata_rows(isin, description, current_month_str)
+
+                # Store in result dictionary
+                parsed_data[isin] = {
+                    'description': description,
+                    'time_series': time_series,
+                    'metadata': metadata_rows,
+                    'current_month': current_month_str
+                }
+
+            log_debug("\n" + "="*80)
+            log_debug("PARSING COMPLETE")
+            log_debug("="*80)
+            log_debug(f"Processed {len(parsed_data)} unique ISINs")
+
+            return parsed_data
+
     except Exception as e:
         log_debug(f"Error parsing auction data: {str(e)}", "ERROR")
         import traceback

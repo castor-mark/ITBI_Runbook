@@ -11,6 +11,19 @@ DATASET_NAME = 'ITBI'
 COUNTRY = 'ITA'
 
 # =============================================================================
+# PROCESSING CONFIGURATION
+# =============================================================================
+
+# Target month for data extraction
+# Set to None to auto-detect most recent month from data
+# Format: (year, month) e.g., (2025, 10) for October 2025
+# Or 'all' to process all months in the year
+TARGET_MONTH = None  # Options: None (auto), (2025, 10), 'all'
+
+# When set to True, process all months from January to the most recent month
+PROCESS_ALL_MONTHS = True  # Set to True to process entire year
+
+# =============================================================================
 # WEB SCRAPING SELECTORS
 # =============================================================================
 
@@ -107,7 +120,7 @@ TIME_SERIES_ORDER = ['ASGN', 'MAX', 'MIN', 'OFR', 'REQ']
 # =============================================================================
 
 METADATA_DEFAULTS = {
-    'FREQUENCY': 'D',  # Daily
+    'FREQUENCY': 'M',  # Monthly (changed from D)
     'MULTIPLIER': 6.0,
     'AGGREGATION_TYPE': 'END_OF_PERIOD',
     'UNIT_TYPE': 'LEVEL',
@@ -167,6 +180,11 @@ PAGE_LOAD_DELAY = 3
 # =============================================================================
 
 OUTPUT_DIR = './output'
-# Changed from .xls to .xlsx to avoid engine issues
-DATA_FILE_PATTERN = '{isin}_DATA_{timestamp}.xlsx'
-META_FILE_PATTERN = '{isin}_META_{timestamp}.xlsx'
+
+# File naming patterns (ITBI_ISIN_TYPE_YYYYMMDD.xls)
+DATA_FILE_PATTERN = 'ITBI_{isin}_DATA_{timestamp}.xls'
+META_FILE_PATTERN = 'ITBI_{isin}_META_{timestamp}.xls'
+ZIP_FILE_PATTERN = 'ITBI_{isin}_{timestamp}.zip'
+
+# Date format for filenames (YYYYMMDD)
+FILENAME_DATE_FORMAT = '%Y%m%d'
