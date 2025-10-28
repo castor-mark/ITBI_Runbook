@@ -31,7 +31,7 @@ USE_TIMESTAMPED_FOLDERS = True
 # Set to None to auto-detect most recent month from data
 # Format: (year, month) e.g., (2025, 10) for October 2025
 # Or 'all' to process all months in the year
-TARGET_MONTH = None  # Options: None (auto), (2025, 10), 'all'
+TARGET_MONTH = (2025, 9)  # Options: None (auto), (2025, 10), 'all'
 
 # When set to True, process all months from January to the most recent month
 PROCESS_ALL_MONTHS = False  # Set to True to process entire year

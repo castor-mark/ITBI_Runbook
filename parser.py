@@ -251,15 +251,15 @@ def create_time_series_data(isin_data, description):
     # CORRECT mapping verified from source XLS data:
     # Col 9 (Unnamed: 9) = offerto (offered)
     # Col 10 (Unnamed: 10) = minimo offerto (minimum offered)
-    # Col 11 (importi mln euro) = assegnato (assigned)
+    # Col 11 (importi mln euro) = massimo offerto (maximum offered)
     # Col 12 (Unnamed: 12) = richiesto (required)
-    # Col 13 (Unnamed: 13) = massimo offerto (maximum offered)
+    # Col 13 (Unnamed: 13) = assegnato (assigned)
     column_mapping = {
         'offerto': 9,           # 'Unnamed: 9' - offered
         'minimo offerto': 10,   # 'Unnamed: 10' - minimum offered
-        'assegnato': 11,        # 'importi (mln euro)' - assigned
+        'massimo offerto': 11,  # 'importi (mln euro)' - maximum offered
         'richiesto': 12,        # 'Unnamed: 12' - required
-        'massimo offerto': 13   # 'Unnamed: 13' - maximum offered
+        'assegnato': 13         # 'Unnamed: 13' - assigned
     }
     
     # Create data for each time series type
