@@ -357,8 +357,8 @@ def parse_auction_data(xls_file_path, target_month=None, process_all=False):
         log_debug(f"Original rows: {len(df)}")
         log_debug(f"Columns: {list(df.columns)}")
 
-        # Skip the first 3 rows (header information)
-        df = df.iloc[3:].reset_index(drop=True)
+        # Skip the first 2 rows (empty header rows)
+        df = df.iloc[2:].reset_index(drop=True)
         log_debug(f"Rows after skipping header: {len(df)}")
 
         # Remove completely empty rows
